@@ -1,0 +1,6 @@
+apiVersion: v2
+name: myapp
+version: 0.1.0
+description: Golden app chart for EKS (stateless + optional jobs)
+type: application
+appVersion: "1.0.0"

@@ -1,0 +1,23 @@
+ingress:
+  hosts:
+    - host: myapp.dev.example.com
+
+externalSecret:
+  enabled: true
+  name: myapp-aws-outputs
+  data:
+    - secretKey: S3_BUCKET
+      remoteRef: { key: /apps/dev/myapp/s3/audit-logs/name }
+    - secretKey: SQS_URL
+      remoteRef: { key: /apps/dev/myapp/sqs/order-events/url }
+# irsa.roleArn will be set by pipeline after TF apply:
+# irsa:
+#   roleArn: arn:aws:iam::<acct>:role/myapp-dev-irsa
+
+# values.yaml
+replicaCount: 2
+
+resources:
+  requests: { cpu: "200m", memory: "256Mi" }
+  limits:   { cpu: "1",    memory: "512Mi" }
+
