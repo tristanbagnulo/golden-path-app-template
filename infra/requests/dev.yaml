@@ -1,0 +1,43 @@
+# Infrastructure Request - Development Environment
+# Simple AWS resources for getting started quickly
+
+app: myapp
+env: dev
+namespace: myapp
+
+resources:
+  # S3 bucket for file uploads
+  - type: s3_bucket
+    name: uploads
+    purpose: uploads
+    public_access: false
+
+  # S3 bucket for static website hosting
+  - type: s3_bucket
+    name: static
+    purpose: static
+    public_access: true
+
+  # Postgres database (optional)
+  - type: rds_database
+    name: main
+    engine: postgres
+    size: small
+
+  # Secrets for API keys and credentials
+  - type: secret
+    name: app-secrets
+    description: "Application secrets and API keys"
+
+  # IRSA role for Kubernetes service account
+  - type: irsa_role
+    name: myapp
+    s3_buckets: [uploads, static]
+    rds_databases: [main]
+    secrets: [app-secrets]
+
+# Outputs automatically available in your pods:
+# - UPLOADS_BUCKET_NAME
+# - STATIC_BUCKET_NAME  
+# - DATABASE_ENDPOINT
+# - APP_SECRETS_ARN

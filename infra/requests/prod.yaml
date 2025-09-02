@@ -1,0 +1,42 @@
+# Infrastructure Request - Production Environment  
+# Same resources as dev, automatically scaled for production
+
+app: myapp
+env: prod
+namespace: myapp
+
+resources:
+  # S3 bucket for file uploads (with versioning and encryption)
+  - type: s3_bucket
+    name: uploads
+    purpose: uploads
+    public_access: false
+
+  # S3 bucket for static website hosting
+  - type: s3_bucket
+    name: static
+    purpose: static
+    public_access: true
+
+  # Production database (larger, multi-AZ)
+  - type: rds_database
+    name: main
+    engine: postgres
+    size: medium
+
+  # Secrets with automatic rotation
+  - type: secret
+    name: app-secrets
+    description: "Application secrets and API keys"
+
+  # IRSA role (same as dev)
+  - type: irsa_role
+    name: myapp
+    s3_buckets: [uploads, static]
+    rds_databases: [main]
+    secrets: [app-secrets]
+
+# Same environment variables as dev, but with:
+# - Production-grade instance sizes and storage
+# - Multi-AZ high availability
+# - Automated backups and monitoring

@@ -1,0 +1,75 @@
+# Stage Environment Configuration
+
+# Ingress
+ingress:
+  hosts:
+    - host: myapp.stage.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Environment Variables
+env:
+  APP_ENV: "staging"
+  LOG_LEVEL: "info"
+
+# External Secrets Configuration
+externalSecret:
+  enabled: true
+  name: myapp-aws-outputs
+  data:
+    - secretKey: S3_BUCKET
+      remoteRef: { key: /apps/stage/myapp/s3/audit-logs/name }
+    - secretKey: SQS_URL
+      remoteRef: { key: /apps/stage/myapp/sqs/order-events/url }
+    - secretKey: DYNAMODB_TABLE
+      remoteRef: { key: /apps/stage/myapp/dynamodb/user-sessions/name }
+
+# IRSA Role ARN (set by pipeline after Terraform apply)
+# irsa:
+#   roleArn: arn:aws:iam::<account>:role/myapp-stage-irsa
+
+# Scaling Configuration
+replicaCount: 2
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+# Resource Configuration
+resources:
+  requests: 
+    cpu: "150m"
+    memory: "256Mi"
+  limits:   
+    cpu: "1"
+    memory: "1Gi"
+
+# Pod Disruption Budget
+pdb:
+  enabled: true
+  minAvailable: 1
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+    from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+  egress:
+    enabled: true
+    to:
+      - {}  # Allow all egress - customize as needed
+
+# Monitoring
+serviceMonitor:
+  enabled: true
+  path: /metrics
+  portName: http
+  interval: 30s
+  scrapeTimeout: 10s

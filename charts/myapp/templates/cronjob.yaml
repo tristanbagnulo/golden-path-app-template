@@ -1,0 +1,82 @@
+{{- if .Values.cronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "myapp.fullname" . }}-{{ .Values.cronJob.name | default "cronjob" }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cronjob
+spec:
+  schedule: {{ .Values.cronJob.schedule | quote }}
+  concurrencyPolicy: {{ .Values.cronJob.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.cronJob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronJob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "myapp.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: cronjob
+        spec:
+          serviceAccountName: {{ include "myapp.fullname" . }}
+          restartPolicy: {{ .Values.cronJob.restartPolicy }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+            - name: {{ .Values.cronJob.name | default "cronjob" }}
+              image: "{{ .Values.cronJob.image.repository }}:{{ .Values.cronJob.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.cronJob.image.pullPolicy }}
+              {{- if .Values.cronJob.command }}
+              command:
+                {{- toYaml .Values.cronJob.command | nindent 16 }}
+              {{- end }}
+              {{- if .Values.cronJob.args }}
+              args:
+                {{- toYaml .Values.cronJob.args | nindent 16 }}
+              {{- end }}
+              env:
+                {{- range $key, $value := .Values.cronJob.env }}
+                - name: {{ $key }}
+                  value: {{ $value | quote }}
+                {{- end }}
+                {{- if .Values.externalSecret.enabled }}
+                - name: AWS_REGION
+                  value: {{ .Values.aws.region | default "us-east-2" | quote }}
+                {{- end }}
+              envFrom:
+                {{- if .Values.externalSecret.enabled }}
+                - secretRef:
+                    name: {{ .Values.externalSecret.name }}
+                {{- end }}
+              {{- if .Values.cronJob.resources }}
+              resources:
+                {{- toYaml .Values.cronJob.resources | nindent 16 }}
+              {{- end }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

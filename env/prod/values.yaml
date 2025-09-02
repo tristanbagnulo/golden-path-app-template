@@ -1,0 +1,128 @@
+# Production Environment Configuration
+
+# Ingress
+ingress:
+  hosts:
+    - host: myapp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "10"  # Higher rate limit for prod
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/modsecurity-snippet: |
+      SecRuleEngine On
+      SecDefaultAction "phase:1,log,auditlog,pass"
+
+# Environment Variables
+env:
+  APP_ENV: "production"
+  LOG_LEVEL: "warn"
+
+# External Secrets Configuration
+externalSecret:
+  enabled: true
+  name: myapp-aws-outputs
+  data:
+    - secretKey: S3_BUCKET
+      remoteRef: { key: /apps/prod/myapp/s3/audit-logs/name }
+    - secretKey: SQS_URL
+      remoteRef: { key: /apps/prod/myapp/sqs/order-events/url }
+    - secretKey: DYNAMODB_TABLE
+      remoteRef: { key: /apps/prod/myapp/dynamodb/user-sessions/name }
+
+
+# IRSA Role ARN (set by pipeline after Terraform apply)
+# irsa:
+#   roleArn: arn:aws:iam::<account>:role/myapp-prod-irsa
+
+# Scaling Configuration - Higher for production
+replicaCount: 2
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 60  # Lower threshold for faster scaling
+
+# Resource Configuration - Higher limits for production
+resources:
+  requests: 
+    cpu: "500m"
+    memory: "512Mi"
+  limits:   
+    cpu: "2"
+    memory: "2Gi"
+
+# Pod Disruption Budget - More conservative for production
+pdb:
+  enabled: true
+  minAvailable: 2  # Ensure at least 2 pods are always available
+
+# Network Policy - More restrictive for production
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+    from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+      # Additional security: only allow specific source IPs if needed
+      # - ipBlock:
+      #     cidr: 10.0.0.0/8
+  egress:
+    enabled: true
+    to:
+      - {}  # Allow all egress - should be customized for production
+
+# Monitoring
+serviceMonitor:
+  enabled: true
+  path: /metrics
+  portName: http
+  interval: 15s  # More frequent monitoring in production
+  scrapeTimeout: 5s
+
+# Health Check Configuration - More aggressive for production
+probes:
+  readinessProbe:
+    path: "/readyz"
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2  # Fail faster
+  livenessProbe:
+    path: "/healthz"
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Node Selection for production workloads
+nodeSelector:
+  node.kubernetes.io/instance-type: "m5.large"  # Specify instance type for consistency
+
+# Affinity rules for high availability
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - myapp
+        topologyKey: kubernetes.io/hostname
+    - weight: 50
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - myapp
+        topologyKey: topology.kubernetes.io/zone

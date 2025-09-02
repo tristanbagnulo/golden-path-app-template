@@ -1,0 +1,162 @@
+# Application Configuration
+replicaCount: 2
+
+# Image Configuration
+image:
+  repository: ghcr.io/your-org/myapp
+  tag: ""  # defaults to Chart.AppVersion if not set
+  pullPolicy: IfNotPresent
+
+# Name overrides
+nameOverride: ""
+fullnameOverride: ""
+
+# Container Configuration
+container:
+  port: 8080
+
+# Environment Variables
+env: {}
+  # Example:
+  # LOG_LEVEL: "info"
+  # APP_ENV: "production"
+
+# AWS Configuration
+aws:
+  region: "us-east-2"
+
+# Resource Configuration
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Health Check Configuration
+probes:
+  readinessProbe:
+    path: "/readyz"
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  livenessProbe:
+    path: "/healthz"
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Service Account Configuration
+serviceAccount:
+  create: true
+  name: ""
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: myapp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    enabled: true
+    secretName: myapp-tls
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "5"
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+
+# Horizontal Pod Autoscaler Configuration
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+# Pod Disruption Budget Configuration
+pdb:
+  enabled: true
+  minAvailable: 1
+  # Alternative: maxUnavailable: 1
+
+# Network Policy Configuration
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+    # Allow ingress from nginx-ingress
+    from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+  egress:
+    enabled: true
+    # Allow egress to AWS services and DNS
+    to:
+      - {}  # Allow all egress by default - customize as needed
+
+# External Secrets Configuration
+externalSecret:
+  enabled: true
+  name: myapp-aws-outputs
+  data: [] # filled by platform runner ⇒ SSM paths per resource
+
+# Service Monitor Configuration (Prometheus)
+serviceMonitor:
+  enabled: true
+  path: /metrics
+  portName: http
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+
+# IRSA (IAM Role for Service Accounts) Configuration
+irsa:
+  roleArn: ""   # platform runner (or pipeline) sets this per env
+
+# Job Configuration
+job:
+  enabled: false
+  name: ""
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  command: []
+  args: []
+  env: {}
+  resources: {}
+  restartPolicy: OnFailure
+  backoffLimit: 3
+
+# CronJob Configuration
+cronJob:
+  enabled: false
+  name: ""
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  command: []
+  args: []
+  env: {}
+  resources: {}
+  restartPolicy: OnFailure
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+
+# Node Selection
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

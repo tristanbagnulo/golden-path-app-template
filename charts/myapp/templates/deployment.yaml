@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.hpa.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "myapp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "myapp.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/externalsecret.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "myapp.fullname" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: {{ include "myapp.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.container.port | default 8080 }}
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- if .Values.externalSecret.enabled }}
+            - name: AWS_REGION
+              value: {{ .Values.aws.region | default "us-east-2" | quote }}
+            {{- end }}
+          envFrom:
+            {{- if .Values.externalSecret.enabled }}
+            - secretRef:
+                name: {{ .Values.externalSecret.name }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readinessProbe.path | default "/readyz" }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readinessProbe.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.probes.readinessProbe.periodSeconds | default 5 }}
+            timeoutSeconds: {{ .Values.probes.readinessProbe.timeoutSeconds | default 3 }}
+            failureThreshold: {{ .Values.probes.readinessProbe.failureThreshold | default 3 }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.livenessProbe.path | default "/healthz" }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.livenessProbe.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.probes.livenessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.probes.livenessProbe.timeoutSeconds | default 3 }}
+            failureThreshold: {{ .Values.probes.livenessProbe.failureThreshold | default 3 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,77 @@
+{{- if .Values.job.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "myapp.fullname" . }}-{{ .Values.job.name | default "job" }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: job
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "myapp.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: job
+    spec:
+      serviceAccountName: {{ include "myapp.fullname" . }}
+      restartPolicy: {{ .Values.job.restartPolicy }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: {{ .Values.job.name | default "job" }}
+          image: "{{ .Values.job.image.repository }}:{{ .Values.job.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.job.image.pullPolicy }}
+          {{- if .Values.job.command }}
+          command:
+            {{- toYaml .Values.job.command | nindent 12 }}
+          {{- end }}
+          {{- if .Values.job.args }}
+          args:
+            {{- toYaml .Values.job.args | nindent 12 }}
+          {{- end }}
+          env:
+            {{- range $key, $value := .Values.job.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- if .Values.externalSecret.enabled }}
+            - name: AWS_REGION
+              value: {{ .Values.aws.region | default "us-east-2" | quote }}
+            {{- end }}
+          envFrom:
+            {{- if .Values.externalSecret.enabled }}
+            - secretRef:
+                name: {{ .Values.externalSecret.name }}
+            {{- end }}
+          {{- if .Values.job.resources }}
+          resources:
+            {{- toYaml .Values.job.resources | nindent 12 }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
