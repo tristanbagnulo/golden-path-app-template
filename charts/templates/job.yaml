@@ -2,19 +2,19 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "myapp.fullname" . }}-{{ .Values.job.name | default "job" }}
+  name: {{ include "app.fullname" . }}-{{ .Values.job.name | default "job" }}
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "app.labels" . | nindent 4 }}
     app.kubernetes.io/component: job
 spec:
   backoffLimit: {{ .Values.job.backoffLimit }}
   template:
     metadata:
       labels:
-        {{- include "myapp.selectorLabels" . | nindent 8 }}
+        {{- include "app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: job
     spec:
-      serviceAccountName: {{ include "myapp.fullname" . }}
+      serviceAccountName: {{ include "app.fullname" . }}
       restartPolicy: {{ .Values.job.restartPolicy }}
       securityContext:
         runAsNonRoot: true
