@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "myapp.fullname" . }}-{{ .Values.cronJob.name | default "cronjob" }}
+  name: {{ include "app.fullname" . }}-{{ .Values.cronJob.name | default "cronjob" }}
   labels:
-    {{- include "myapp.labels" . | nindent 4 }}
+    {{- include "app.labels" . | nindent 4 }}
     app.kubernetes.io/component: cronjob
 spec:
   schedule: {{ .Values.cronJob.schedule | quote }}
@@ -16,10 +16,10 @@ spec:
       template:
         metadata:
           labels:
-            {{- include "myapp.selectorLabels" . | nindent 12 }}
+            {{- include "app.selectorLabels" . | nindent 12 }}
             app.kubernetes.io/component: cronjob
         spec:
-          serviceAccountName: {{ include "myapp.fullname" . }}
+          serviceAccountName: {{ include "app.fullname" . }}
           restartPolicy: {{ .Values.cronJob.restartPolicy }}
           securityContext:
             runAsNonRoot: true
